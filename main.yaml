@@ -1,0 +1,69 @@
+---
+- name: Harden Linux Security
+  hosts: localhost
+  become: true
+  tasks:
+    - name: Update all packages to the latest version
+      apt:
+        update_cache: yes
+        upgrade: dist
+      when: ansible_os_family == "Debian"
+
+    - name: Update all packages to the latest version
+      yum:
+        name: '*'
+        state: latest
+      when: ansible_os_family == "RedHat"
+
+    - name: Install fail2ban
+      apt:
+        name: fail2ban
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install fail2ban
+      yum:
+        name: fail2ban
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Ensure fail2ban is running and enabled
+      service:
+        name: fail2ban
+        state: started
+        enabled: true
+
+    - name: Configure UFW (Uncomplicated Firewall) on Debian
+      ufw:
+        rule: allow
+        name: 'OpenSSH'
+      when: ansible_os_family == "Debian"
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+      when: ansible_os_family == "Debian"
+
+    - name: Configure firewalld on RedHat
+      firewalld:
+        service: ssh
+        permanent: yes
+        state: enabled
+      when: ansible_os_family == "RedHat"
+
+    - name: Reload firewalld
+      firewalld:
+        state: reloaded
+      when: ansible_os_family == "RedHat"
+
+    - name: Disable unused services
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      with_items:
+        - avahi-daemon
+        - cups
+        - telnet.socket
+        - rpcbind
+      when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
